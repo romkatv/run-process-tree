@@ -41,4 +41,4 @@ exec {stdout}>&1
   kill $watchdog
   wait $watchdog
   return ret
-} | while read; do; done
+} | while read; do; done || return
