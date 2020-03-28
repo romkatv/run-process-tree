@@ -1,0 +1,2 @@
+* text=auto
+/run-process-tree text eol=lf
