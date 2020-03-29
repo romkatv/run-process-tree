@@ -1,9 +1,23 @@
 #!/usr/bin/env zsh
+#
+# Note: run-process-tree hangs if you run it as function from a
+# subshell of interactive shell.
+#
+#   zsh -fic '(fpath+=(~/run-process-tree); autoload -Uz run-process-tree; run-process-tree :)'
+#
+# Because this hangs:
+#
+#  zsh -fic '(setopt monitor; : | :)'
+#
+# See https://www.zsh.org/mla/workers//2020/msg00471.html.
 
-zmodload zsh/system zsh/param/private || return
-local -P opt=(${(kv)options[@]})      || return
-emulate -L zsh -o err_return          || return
+zmodload zsh/parameter zsh/param/private || return
+local -P opt=(${(kv)options[@]})         || return
+local -P pat=(${patchars[@]})            || return
+local -P dis_pat=(${dis_patchars[@]})    || return
+emulate -L zsh -o err_return             || return
 setopt monitor traps_async pipe_fail no_unset
+zmodload zsh/system
 
 if (( $# == 0 )); then
   print -ru2 -- 'usage: run-process-tree command [arg]...'
@@ -16,7 +30,7 @@ exec {stdout}>&1
   {
     local -Pi pipe
     local -P gid=$sysparams[pid]
-    local -P sig=(TERM EXIT INT QUIT ILL PIPE ZERR HUP)
+    local -P sig=(ABRT EXIT HUP ILL INT PIPE QUIT TERM ZERR)
     local -P trap=(trap "trap - $sig; kill -- -$sysparams[pid]" $sig)
 
     exec {pipe}>&1 1>&$stdout
@@ -29,8 +43,10 @@ exec {stdout}>&1
     local -Pi watchdog=$!
 
     {
+      trap - ZERR
       exec {pipe}>&-
-      trap - $sig
+      enable -p -- $pat
+      disable -p -- $dis_pat
       options=($opt zle off monitor off)
       "$@"
     } &
